@@ -51,7 +51,7 @@ const CSS = `
 
 html, body, #root { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
-.shell { display: flex; flex-direction: column; height: 100dvh; max-width: 430px; margin: 0 auto; background: var(--white); box-shadow: 0 0 40px rgba(0,0,0,0.10); }
+.shell { display: flex; flex-direction: column; height: 100dvh; width: 100%; background: var(--white); }
 
 .topbar { padding: 16px 20px 13px; border-bottom: 1.5px solid var(--border); flex-shrink: 0; background: var(--white); display: flex; align-items: center; justify-content: space-between; }
 .topbar-title { font-size: 22px; font-weight: 900; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
