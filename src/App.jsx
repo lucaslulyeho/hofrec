@@ -60,7 +60,7 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 .sync-dot.error { background: var(--orange); }
 @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.3;} }
 
-.page { flex: 1; overflow-y: auto; padding: 18px; padding-bottom: 8px; }
+.page { flex: 1; overflow-y: auto; padding: 18px; padding-bottom: 8px; width: 100%; }
 
 /* BOTTOM NAV */
 .bottomnav { display: flex; border-top: 1.5px solid var(--border); flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom,0); background: var(--white); }
@@ -84,7 +84,7 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 .total-sub { font-size:12px; color:rgba(255,255,255,0.55); margin-top:7px; font-weight:600; }
 
 /* ITEM LIST */
-.item-list { display:flex; flex-direction:column; gap:0; border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; }
+.item-list { display:flex; flex-direction:column; gap:0; border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; width:100%; }
 .item-row { background:var(--white); border-bottom:1px solid var(--border); padding:13px 16px; }
 .item-row:last-child { border-bottom:none; }
 .item-row-main { display:flex; align-items:center; gap:10px; }
