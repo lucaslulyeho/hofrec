@@ -60,7 +60,7 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 .sync-dot.error { background: var(--orange); }
 @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.3;} }
 
-.page { flex: 1; overflow-y: auto; padding: 18px; padding-bottom: 8px; width: 100%; }
+.page { flex: 1; overflow-y: auto; padding: 18px; padding-bottom: 8px; }
 
 /* BOTTOM NAV */
 .bottomnav { display: flex; border-top: 1.5px solid var(--border); flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom,0); background: var(--white); }
@@ -84,7 +84,7 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 .total-sub { font-size:12px; color:rgba(255,255,255,0.55); margin-top:7px; font-weight:600; }
 
 /* ITEM LIST */
-.item-list { display:flex; flex-direction:column; gap:0; border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; width:100%; }
+.item-list { display:flex; flex-direction:column; gap:0; border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; }
 .item-row { background:var(--white); border-bottom:1px solid var(--border); padding:13px 16px; }
 .item-row:last-child { border-bottom:none; }
 .item-row-main { display:flex; align-items:center; gap:10px; }
@@ -178,6 +178,21 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 
 .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; font-weight:600; }
 .empty-icon { font-size:40px; display:block; margin-bottom:10px; }
+
+/* HISTORY */
+.hist-row { background:var(--white); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; gap:12px; }
+.hist-row:last-child { border-bottom:none; }
+.hist-badge { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.hist-badge.in  { background:var(--green-lt); }
+.hist-badge.out { background:var(--orange-lt); }
+.hist-info { flex:1; min-width:0; }
+.hist-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hist-time { font-size:10px; color:var(--muted); font-weight:600; margin-top:2px; }
+.hist-right { text-align:right; flex-shrink:0; }
+.hist-val { font-size:13px; font-weight:800; }
+.hist-val.in  { color:var(--green); }
+.hist-val.out { color:var(--orange); }
+.hist-doz { font-size:10px; color:var(--muted); font-weight:600; }
 .loading-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:12px; color:var(--muted); font-size:14px; font-weight:700; }
 .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
@@ -194,6 +209,7 @@ export default function App() {
   const [incoming, setIncoming]   = useState([]);
   const [sales, setSales]         = useState([]);
   const [goals, setGoals]         = useState([]);
+  const [history, setHistory]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [syncState, setSyncState] = useState("ok");
@@ -226,18 +242,20 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setSyncState("loading");
     try {
-      const [cat, stk, inc, sal, gls] = await Promise.all([
+      const [cat, stk, inc, sal, gls, hist] = await Promise.all([
         db("catalogue?select=*&order=name.asc"),
         db("stock?select=*"),
         db("incoming?select=*&order=id.asc"),
         db("sales?select=*&order=id.asc"),
         db("goals?select=*"),
+        db("history?select=*&order=created_at.desc&limit=50"),
       ]);
       setCatalogue(cat || []);
       setStock(stk || []);
       setIncoming(inc || []);
       setSales(sal || []);
       setGoals(gls || []);
+      setHistory(hist || []);
       setSyncState("ok");
     } catch(e) {
       setSyncState("error");
@@ -326,6 +344,7 @@ export default function App() {
       } else {
         await db("stock",{method:"POST",body:JSON.stringify({catalogue_id:inc.catalogue_id,dozens:doz})});
       }
+      await db("history",{method:"POST",body:JSON.stringify({catalogue_id:inc.catalogue_id,action:"IN",dozens:doz,value:doz*inc.price_per_doz})});
       await loadAll();
       pop(`✔ ${doz} doz arrived`);
       setArrivingId(null); setArriveDoz("");
@@ -344,6 +363,7 @@ export default function App() {
       // log sale
       const revenue = doz * remItem.cat.selling_price;
       await db("sales",{method:"POST",body:JSON.stringify({catalogue_id:remItem.catalogue_id,dozens:doz,revenue,date:new Date().toLocaleDateString("en-GB")})});
+      await db("history",{method:"POST",body:JSON.stringify({catalogue_id:remItem.catalogue_id,action:"OUT",dozens:doz,value:revenue})});
       await loadAll();
       pop(`✔ Removed ${doz} doz · ${tzs(revenue)}`);
       setRemId(""); setRemDoz("");
@@ -460,6 +480,38 @@ export default function App() {
                       ))}
                     </div>
                 }
+
+                {/* HISTORY */}
+                {history.length > 0 && (
+                  <>
+                    <div className="section-lbl" style={{marginTop:24}}>Recent Activity</div>
+                    <div className="item-list">
+                      {history.map(h => {
+                        const cat = catalogue.find(c=>c.id===h.catalogue_id);
+                        const dt  = new Date(h.created_at);
+                        const dateStr = dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+                        const timeStr = dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+                        return (
+                          <div className="hist-row" key={h.id}>
+                            <div className={`hist-badge ${h.action.toLowerCase()}`}>
+                              {h.action==="IN" ? "📥" : "📤"}
+                            </div>
+                            <div className="hist-info">
+                              <div className="hist-name">{cat?.name || "Unknown"}</div>
+                              <div className="hist-time">{dateStr} · {timeStr}</div>
+                            </div>
+                            <div className="hist-right">
+                              <div className={`hist-val ${h.action.toLowerCase()}`}>
+                                {h.action==="IN" ? "+" : "−"}{tzs(h.value)}
+                              </div>
+                              <div className="hist-doz">{h.dozens} doz</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
