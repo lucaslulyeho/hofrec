@@ -217,7 +217,8 @@ export default function App() {
   const [syncState, setSyncState] = useState("ok");
   const [toast, setToast]         = useState(null);
 
-  const [homeTab, setHomeTab] = useState("summary"); // summary | history
+  const [homeTab, setHomeTab] = useState("summary");
+  const [shopTab, setShopTab] = useState("revenue");
   const [incCatId, setIncCatId]     = useState("");
   const [incDoz, setIncDoz]         = useState("");
   const [incPrice, setIncPrice]     = useState("");
@@ -646,86 +647,94 @@ export default function App() {
             {tab === 3 && (
               <div>
                 <div className="pg-heading">My Shop</div>
-                <div className="pg-sub">Revenue & yearly goals — {YEAR}</div>
+                <div className="pg-sub">{YEAR} performance</div>
 
-                {/* Revenue card */}
+                {/* Revenue card always visible */}
                 <div className="total-card green">
                   <div className="total-lbl">Total Revenue {YEAR}</div>
                   <div className="total-val">{tzs(totalRevenue)}</div>
                   <div className="total-sub">{thisYearSales.length} sales recorded this year</div>
                 </div>
 
-                {/* Revenue by product */}
-                {revenueByProduct.length > 0 && (
-                  <>
-                    <div className="section-lbl">Revenue by Product</div>
-                    <div className="item-list" style={{marginBottom:20}}>
-                      {revenueByProduct.map(c=>(
-                        <div className="rev-row" key={c.id}>
-                          <div className="rev-name">{c.name}</div>
-                          <div>
-                            <div className="rev-val">{tzs(c.revenue)}</div>
-                            <div className="rev-sub">{c.dozens} doz sold</div>
+                {/* PILLS */}
+                <div className="pill-row">
+                  <button className={`pill ${shopTab==="revenue"?"active":""}`} onClick={()=>setShopTab("revenue")}>Revenue</button>
+                  <button className={`pill ${shopTab==="goals"?"active":""}`} onClick={()=>setShopTab("goals")}>Goals</button>
+                </div>
+
+                {/* REVENUE VIEW */}
+                {shopTab === "revenue" && (
+                  revenueByProduct.length === 0
+                    ? <div className="empty-state"><span className="empty-icon">💰</span>No sales recorded yet.</div>
+                    : <div className="item-list">
+                        {revenueByProduct.map(c=>(
+                          <div className="rev-row" key={c.id}>
+                            <div className="rev-name">{c.name}</div>
+                            <div>
+                              <div className="rev-val">{tzs(c.revenue)}</div>
+                              <div className="rev-sub">{c.dozens} doz sold</div>
+                            </div>
                           </div>
+                        ))}
+                      </div>
+                )}
+
+                {/* GOALS VIEW */}
+                {shopTab === "goals" && (
+                  <>
+                    {goalProgress.length === 0
+                      ? <div className="empty-state" style={{padding:"24px 0"}}><span className="empty-icon">🎯</span>No goals set yet.</div>
+                      : <div className="item-list" style={{marginBottom:20}}>
+                          {goalProgress.map(g=>(
+                            <div className="goal-row" key={g.catalogue_id}>
+                              <div className="goal-top">
+                                <div className="goal-name">{g.cat.name}</div>
+                                <div className="goal-nums"><span>{g.boughtQty}</span> / {g.target_dozens} doz</div>
+                              </div>
+                              <div className="progress-bar">
+                                <div className="progress-fill" style={{width:`${g.pct}%`,background:g.pct>=100?"var(--green)":g.pct>=70?"var(--accent)":"var(--warn)"}}/>
+                              </div>
+                              <div className="goal-footer">
+                                <span>{g.pct>=100?"🎉 Goal reached!": `${g.remaining} doz remaining`}</span>
+                                <button className="goal-edit-btn" onClick={()=>{setEditGoalId(g.catalogue_id);setEditGoalVal(String(g.target_dozens));}}>Edit target</button>
+                              </div>
+                              {editGoalId===g.catalogue_id&&(
+                                <div style={{marginTop:10,background:"var(--accent-lt)",borderRadius:10,padding:"12px 14px"}}>
+                                  <div style={{fontSize:10,fontWeight:800,color:"var(--accent)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>New yearly target (dozens)</div>
+                                  <div style={{display:"flex",gap:8}}>
+                                    <input className="inp" type="number" placeholder="e.g. 500" value={editGoalVal} onChange={e=>setEditGoalVal(e.target.value)} style={{flex:1,padding:"10px 13px",fontSize:14}} autoFocus/>
+                                    <button className="save-btn" disabled={saving} onClick={()=>saveGoalEdit(g.catalogue_id)}>{saving?"…":"Save"}</button>
+                                    <button className="save-btn" style={{background:"#e5e7eb",color:"var(--muted)"}} onClick={()=>setEditGoalId(null)}>Cancel</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                    }
+
+                    {/* Set new goal */}
+                    <div className="goal-set-card">
+                      <div className="goal-set-title">🎯 Set a New Goal</div>
+                      <div className="field">
+                        <label className="lbl">Product</label>
+                        <div className="sel-wrap">
+                          <select className="sel" value={goalCatId} onChange={e=>setGoalCatId(e.target.value)}>
+                            <option value="">— select product —</option>
+                            {catalogue.filter(c=>!goals.find(g=>g.catalogue_id===c.id)).map(c=>(
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="field">
+                        <label className="lbl">Target Dozens for {YEAR}</label>
+                        <input className="inp" type="number" placeholder="e.g. 500" value={goalTarget} onChange={e=>setGoalTarget(e.target.value)}/>
+                      </div>
+                      <button className="cta cta-green" disabled={saving} onClick={doSetGoal}>{saving?"Saving…":"Set Goal"}</button>
                     </div>
                   </>
                 )}
-
-                {/* Goals */}
-                <div className="section-lbl">Yearly Goals (Dozens Bought)</div>
-                {goalProgress.length === 0
-                  ? <div className="empty-state" style={{padding:"24px 0"}}><span className="empty-icon">🎯</span>No goals set yet.</div>
-                  : <div className="item-list" style={{marginBottom:20}}>
-                      {goalProgress.map(g=>(
-                        <div className="goal-row" key={g.catalogue_id}>
-                          <div className="goal-top">
-                            <div className="goal-name">{g.cat.name}</div>
-                            <div className="goal-nums"><span>{g.boughtQty}</span> / {g.target_dozens} doz</div>
-                          </div>
-                          <div className="progress-bar">
-                            <div className="progress-fill" style={{width:`${g.pct}%`,background: g.pct>=100?"var(--green)":g.pct>=70?"var(--accent)":"var(--warn)"}}/>
-                          </div>
-                          <div className="goal-footer">
-                            <span>{g.pct>=100 ? "🎉 Goal reached!" : `${g.remaining} doz remaining`}</span>
-                            <button className="goal-edit-btn" onClick={()=>{setEditGoalId(g.catalogue_id);setEditGoalVal(String(g.target_dozens));}}>Edit target</button>
-                          </div>
-                          {editGoalId===g.catalogue_id&&(
-                            <div style={{marginTop:10,background:"var(--accent-lt)",borderRadius:10,padding:"12px 14px"}}>
-                              <div style={{fontSize:10,fontWeight:800,color:"var(--accent)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>New yearly target (dozens)</div>
-                              <div style={{display:"flex",gap:8}}>
-                                <input className="inp" type="number" placeholder="e.g. 500" value={editGoalVal} onChange={e=>setEditGoalVal(e.target.value)} style={{flex:1,padding:"10px 13px",fontSize:14}} autoFocus/>
-                                <button className="save-btn" disabled={saving} onClick={()=>saveGoalEdit(g.catalogue_id)}>{saving?"…":"Save"}</button>
-                                <button className="save-btn" style={{background:"#e5e7eb",color:"var(--muted)"}} onClick={()=>setEditGoalId(null)}>Cancel</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                }
-
-                {/* Set new goal */}
-                <div className="goal-set-card">
-                  <div className="goal-set-title">🎯 Set a New Goal</div>
-                  <div className="field">
-                    <label className="lbl">Product</label>
-                    <div className="sel-wrap">
-                      <select className="sel" value={goalCatId} onChange={e=>setGoalCatId(e.target.value)}>
-                        <option value="">— select product —</option>
-                        {catalogue.filter(c=>!goals.find(g=>g.catalogue_id===c.id)).map(c=>(
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label className="lbl">Target Dozens for {YEAR}</label>
-                    <input className="inp" type="number" placeholder="e.g. 500" value={goalTarget} onChange={e=>setGoalTarget(e.target.value)}/>
-                  </div>
-                  <button className="cta cta-green" disabled={saving} onClick={doSetGoal}>{saving?"Saving…":"Set Goal"}</button>
-                </div>
               </div>
             )}
 
