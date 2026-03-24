@@ -174,7 +174,9 @@ html, body, #root { height: 100%; font-family: var(--font); background: var(--bg
 .goal-set-card { background:#f0fdf4; border:1.5px solid var(--green-br); border-radius:var(--r); padding:18px; margin-top:16px; }
 .goal-set-title { font-size:13px; font-weight:900; color:var(--green); margin-bottom:15px; text-transform:uppercase; letter-spacing:0.5px; }
 
-.section-lbl { font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; margin-top:20px; }
+.pill-row { display:flex; gap:8px; margin-bottom:16px; }
+.pill { padding:7px 20px; border-radius:40px; font-size:12px; font-weight:800; border:1.5px solid var(--border); background:var(--white); color:var(--muted); cursor:pointer; font-family:var(--font); letter-spacing:0.3px; transition:all 0.15s; }
+.pill.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
 .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; font-weight:600; }
 .empty-icon { font-size:40px; display:block; margin-bottom:10px; }
@@ -215,7 +217,7 @@ export default function App() {
   const [syncState, setSyncState] = useState("ok");
   const [toast, setToast]         = useState(null);
 
-  // incoming form
+  const [homeTab, setHomeTab] = useState("summary"); // summary | history
   const [incCatId, setIncCatId]     = useState("");
   const [incDoz, setIncDoz]         = useState("");
   const [incPrice, setIncPrice]     = useState("");
@@ -432,7 +434,7 @@ export default function App() {
   };
 
   const TABS = [
-    { label:"Summary",  icon:"📊" },
+    { label:"Home",     icon:"🏠" },
     { label:"Incoming", icon:"✈️" },
     { label:"Remove",   icon:"📤" },
     { label:"My Shop",  icon:"🏪" },
@@ -456,7 +458,7 @@ export default function App() {
         ) : (
           <div className="page">
 
-            {/* ── SUMMARY ── */}
+            {/* ── HOME ── */}
             {tab === 0 && (
               <div>
                 <div className="total-card blue">
@@ -464,53 +466,61 @@ export default function App() {
                   <div className="total-val">{tzs(warehouseValue)}</div>
                   <div className="total-sub">{warehouseDozens} dozens in stock</div>
                 </div>
-                {stockWithInfo.length === 0
-                  ? <div className="empty-state"><span className="empty-icon">📦</span>No stock in warehouse yet.</div>
-                  : <div className="item-list">
-                      {stockWithInfo.map(s=>(
-                        <div className="item-row" key={s.catalogue_id}>
-                          <div className="item-row-main">
-                            <div className="item-name">{s.cat.name}</div>
-                            <div className="item-right">
-                              <div className="item-val">{tzs(s.dozens*s.cat.selling_price)}</div>
-                              <div className="item-sub">{s.dozens} doz · {tzs(s.cat.selling_price)}/doz</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                }
 
-                {/* HISTORY */}
-                {history.length > 0 && (
-                  <>
-                    <div className="section-lbl" style={{marginTop:24}}>Recent Activity</div>
-                    <div className="item-list">
-                      {history.map(h => {
-                        const cat = catalogue.find(c=>c.id===h.catalogue_id);
-                        const dt  = new Date(h.created_at);
-                        const dateStr = dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-                        const timeStr = dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-                        return (
-                          <div className="hist-row" key={h.id}>
-                            <div className={`hist-badge ${h.action.toLowerCase()}`}>
-                              {h.action==="IN" ? "📥" : "📤"}
-                            </div>
-                            <div className="hist-info">
-                              <div className="hist-name">{cat?.name || "Unknown"}</div>
-                              <div className="hist-time">{dateStr} · {timeStr}</div>
-                            </div>
-                            <div className="hist-right">
-                              <div className={`hist-val ${h.action.toLowerCase()}`}>
-                                {h.action==="IN" ? "+" : "−"}{tzs(h.value)}
+                {/* PILLS */}
+                <div className="pill-row">
+                  <button className={`pill ${homeTab==="summary"?"active":""}`} onClick={()=>setHomeTab("summary")}>Summary</button>
+                  <button className={`pill ${homeTab==="history"?"active":""}`} onClick={()=>setHomeTab("history")}>History</button>
+                </div>
+
+                {/* SUMMARY VIEW */}
+                {homeTab === "summary" && (
+                  stockWithInfo.length === 0
+                    ? <div className="empty-state"><span className="empty-icon">📦</span>No stock in warehouse yet.</div>
+                    : <div className="item-list">
+                        {stockWithInfo.map(s=>(
+                          <div className="item-row" key={s.catalogue_id}>
+                            <div className="item-row-main">
+                              <div className="item-name">{s.cat.name}</div>
+                              <div className="item-right">
+                                <div className="item-val">{tzs(s.dozens*s.cat.selling_price)}</div>
+                                <div className="item-sub">{s.dozens} doz · {tzs(s.cat.selling_price)}/doz</div>
                               </div>
-                              <div className="hist-doz">{h.dozens} doz</div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                        ))}
+                      </div>
+                )}
+
+                {/* HISTORY VIEW */}
+                {homeTab === "history" && (
+                  history.length === 0
+                    ? <div className="empty-state"><span className="empty-icon">📋</span>No activity yet. Add or remove stock to see history.</div>
+                    : <div className="item-list">
+                        {history.map(h => {
+                          const cat = catalogue.find(c=>c.id===h.catalogue_id);
+                          const dt  = new Date(h.created_at);
+                          const dateStr = dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+                          const timeStr = dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+                          return (
+                            <div className="hist-row" key={h.id}>
+                              <div className={`hist-badge ${h.action.toLowerCase()}`}>
+                                {h.action==="IN"?"📥":"📤"}
+                              </div>
+                              <div className="hist-info">
+                                <div className="hist-name">{cat?.name||"Unknown"}</div>
+                                <div className="hist-time">{dateStr} · {timeStr}</div>
+                              </div>
+                              <div className="hist-right">
+                                <div className={`hist-val ${h.action.toLowerCase()}`}>
+                                  {h.action==="IN"?"+":"−"}{tzs(h.value)}
+                                </div>
+                                <div className="hist-doz">{h.dozens} doz</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                 )}
               </div>
             )}
